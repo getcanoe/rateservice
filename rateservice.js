@@ -17,7 +17,7 @@ var config = {
   },
   debug: false,
   mqtt: {
-    url: 'wss://localhost',
+    url: 'wss://getcanoe.io',
     options: {
       username: 'test',
       password: 'gurka'
