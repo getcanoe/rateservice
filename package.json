@@ -1,0 +1,14 @@
+{
+  "name": "rateservice",
+  "description": "Canoe rate service",
+  "author": "??",
+  "dependencies": {
+    "extend": "^3.0.1",
+    "fs": "0.0.1-security",
+    "mqtt": "^2.7.2",
+    "mqtt-regex": "^1.0.5",
+    "winston": "^2.4.0"
+  },
+  "main": "collector.js",
+  "version": "0.0.1"
+}
