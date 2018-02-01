@@ -28,7 +28,7 @@ let config = {
       topic: 'rates',
       opts: {
         qos: 2,
-        retain: false
+        retain: true
       }
     }
   }
@@ -122,7 +122,7 @@ let configureSignals = () => {
 
 let startScheduler = () => {
   schedule.scheduleJob('0 * * * * *', () => {
-    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=USD', (error, response, body) => {
+    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=USD,EUR,GBP,JPY,KRW,ETH,BTC', (error, response, body) => {
       publishRates(body, () => {
         winston.info("Published Rates")
       })
