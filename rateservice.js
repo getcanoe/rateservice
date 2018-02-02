@@ -1,6 +1,7 @@
+#!/usr/bin/env node
 /**
  * This is a service that pulls in rate information and republishes it
- * over MQTT, rateservice.conf.
+ * over MQTT. See conf file rateservice.conf.
  */
 
 const fs = require('fs')
