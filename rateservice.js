@@ -59,7 +59,7 @@ let configure = () => {
 let connectMQTT = () => {
   mqttClient = mqtt.connect(config.mqtt.url, config.mqtt.options)
   mqttClient.on('connect', () => {
-    winston.debug('CONNECTED TO MQTT')
+    winston.debug('Connected to MQTT server')
     subscribe()
     startScheduler()
   })
@@ -88,7 +88,7 @@ let subscribe = () => {
 
 let handleControl = (message) => {
   let control = JSON.parse(message)
-  winston.debug('PARSED CONTROL: ', control)
+  winston.debug('Ignored control message: ', JSON.stringify(control))
   // TODO handle control commands
 }
 
