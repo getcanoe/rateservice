@@ -7,17 +7,19 @@ const fs = require('fs')
 const mqtt = require('mqtt')
 const extend = require('extend')   // To merge objects
 const winston = require('winston') // Logging lib
+const schedule = require('node-schedule') //Schedule Published Rates
+const request = require('request') // HTTP Requests for APIs
 
 const CONFIG_FILE = 'rateservice.conf'
 
 // Default config that is extended (merged) with CONFIG_FILE
-var config = {
+let config = {
   logging: {
     level: 'info'
   },
   debug: false,
   mqtt: {
-    url: 'wss://getcanoe.io',
+    url: 'wss://getcanoe.io:1884/mqtt',
     options: {
       username: 'test',
       password: 'gurka'
@@ -26,24 +28,24 @@ var config = {
       topic: 'rates',
       opts: {
         qos: 2,
-        retain: false
+        retain: true
       }
     }
   }
 }
 
 // MQTT Client
-var mqttClient = null
+let mqttClient = null
 
 // Flag to indicate we have already subscribed to topics
-var subscribed = false
+let subscribed = false
 
 // Read configuration
-function configure () {
+let configure = () => {
   // Read config file if exists
   if (fs.existsSync(CONFIG_FILE)) {
     try {
-      var fileConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+      let fileConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
       extend(true, config, fileConfig)
     } catch (e) {
       winston.error('Failed to parse config file: ' + CONFIG_FILE + e.message)
@@ -54,15 +56,16 @@ function configure () {
 }
 
 // Connect to MQTT
-function connectMQTT () {
+let connectMQTT = () => {
   mqttClient = mqtt.connect(config.mqtt.url, config.mqtt.options)
-  mqttClient.on('connect', function () {
+  mqttClient.on('connect', () => {
     winston.debug('CONNECTED TO MQTT')
     subscribe()
+    startScheduler()
   })
 
   // Where all subscribed messages come in
-  mqttClient.on('message', function (topic, message) {
+  mqttClient.on('message', (topic, message) => {
     switch (topic) {
       case 'rateservicecontrol':
         return handleControl(message)
@@ -71,26 +74,26 @@ function connectMQTT () {
   })
 }
 
-function publishRates (payload, callback) {
+let publishRates = (payload, callback) => {
   mqttClient.publish(config.mqtt.rates.topic, payload, config.mqtt.rates.opts, callback)
 }
 
 // Subscribe to control
-function subscribe () {
+let subscribe = () => {
   if (!subscribed) {
     mqttClient.subscribe('rateservicecontrol')
     subscribed = true
   }
 }
 
-function handleControl (message) {
-  var control = JSON.parse(message)
+let handleControl = (message) => {
+  let control = JSON.parse(message)
   winston.debug('PARSED CONTROL: ', control)
   // TODO handle control commands
 }
 
 // Want to notify before shutting down
-function handleAppExit (options, err) {
+let handleAppExit = (options, err) => {
   if (err) {
     winston.error(err.stack)
   }
@@ -104,7 +107,7 @@ function handleAppExit (options, err) {
   }
 }
 
-function configureSignals () {
+let configureSignals = () => {
   // Handle the different ways an application can shutdown
   process.on('exit', handleAppExit.bind(null, {
     cleanup: true
@@ -117,7 +120,19 @@ function configureSignals () {
   }))
 }
 
-function main () {
+let startScheduler = () => {
+  schedule.scheduleJob('0 * * * * *', () => {
+    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=USD,EUR,GBP,JPY,KRW,ETH,BTC', (error, response, body) => {
+      publishRates(body, () => {
+        winston.info("Published Rates")
+      })
+    })
+  })
+}
+
+
+let main = () => {
+  winston.info('Started RateService')
   configure()
   configureSignals()
   connectMQTT()
