@@ -142,7 +142,7 @@ let startScheduler = () => {
           }
           return map
         }, {})
-        publishRates(rates, () => {
+        publishRates(JSON.stringify(rates), () => {
           winston.info("Published Rates")
         })
       })
