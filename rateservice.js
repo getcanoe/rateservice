@@ -129,13 +129,20 @@ let startScheduler = () => {
         btcConversions = JSON.parse(btcConversions)
         btcConversions.forEach(function(pair) {
           pair.rate = pair.rate * btcPrice.BTC
-        });
+        })
         btcConversions.push({
           code:"ETH",
           name:"Ethereum",
           rate: btcPrice.ETH
         })
-        publishRates(btcConversions, () => {
+        let rates = btcConversions.reduce(function(map, obj) {
+          map[obj.code] = {
+            name: obj.name,
+            rate: obj.rate
+          }
+          return map
+        }, {})
+        publishRates(rates, () => {
           winston.info("Published Rates")
         })
       })
