@@ -123,9 +123,21 @@ let configureSignals = () => {
 
 let startScheduler = () => {
   schedule.scheduleJob('0 * * * * *', () => {
-    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=USD,EUR,GBP,JPY,KRW,ETH,BTC', (error, response, body) => {
-      publishRates(body, () => {
-        winston.info("Published Rates")
+    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=BTC,ETH', (error, response, btcPrice) => {
+      btcPrice = JSON.parse(btcPrice)
+      request('https://bitpay.com/api/rates', (error, response, btcConversions) => {
+        btcConversions = JSON.parse(btcConversions)
+        btcConversions.forEach(function(pair) {
+          pair.rate = pair.rate * btcPrice.BTC
+        });
+        btcConversions.push({
+          code:"ETH",
+          name:"Ethereum",
+          rate: btcPrice.ETH
+        })
+        publishRates(btcConversions, () => {
+          winston.info("Published Rates")
+        })
       })
     })
   })
