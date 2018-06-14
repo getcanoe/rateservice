@@ -54,10 +54,12 @@ let configure = () => {
     }
   }
   winston.level = config.logging.level
+  winston.debug('Configured')
 }
 
 // Connect to MQTT
 let connectMQTT = () => {
+  winston.debug('Connecting MQTT')
   mqttClient = mqtt.connect(config.mqtt.url, config.mqtt.options)
   mqttClient.on('connect', () => {
     winston.debug('Connected to MQTT server')
@@ -122,8 +124,11 @@ let configureSignals = () => {
 }
 
 let startScheduler = () => {
+  winston.debug('Scheduling job')
   schedule.scheduleJob('0 * * * * *', () => {
+    winston.debug('Starting update ...')
     request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=BTC,ETH', (error, response, btcPrice) => {
+      winston.debug('BTC price: ' + btcPrice)
       btcPrice = JSON.parse(btcPrice)
       request('https://bitpay.com/api/rates', (error, response, btcConversions) => {
         btcConversions = JSON.parse(btcConversions)
