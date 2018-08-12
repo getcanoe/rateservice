@@ -38,8 +38,8 @@ let config = {
 // MQTT Client
 let mqttClient = null
 
-// Flag to indicate we have already subscribed to topics
-let subscribed = false
+// Are we connected to MQTT?
+var connected = false
 
 // Read configuration
 let configure = () => {
@@ -63,36 +63,12 @@ let connectMQTT = () => {
   mqttClient = mqtt.connect(config.mqtt.url, config.mqtt.options)
   mqttClient.on('connect', () => {
     winston.debug('Connected to MQTT server')
-    subscribe()
-    startScheduler()
-  })
-
-  // Where all subscribed messages come in
-  mqttClient.on('message', (topic, message) => {
-    switch (topic) {
-      case 'rateservicecontrol':
-        return handleControl(message)
-    }
-    winston.error('No handler for topic %s', topic)
+    connected = true
   })
 }
 
 let publishRates = (payload, callback) => {
   mqttClient.publish(config.mqtt.rates.topic, payload, config.mqtt.rates.opts, callback)
-}
-
-// Subscribe to control
-let subscribe = () => {
-  if (!subscribed) {
-    mqttClient.subscribe('rateservicecontrol')
-    subscribed = true
-  }
-}
-
-let handleControl = (message) => {
-  let control = JSON.parse(message)
-  winston.debug('Ignored control message: ', JSON.stringify(control))
-  // TODO handle control commands
 }
 
 // Want to notify before shutting down
@@ -127,40 +103,42 @@ let startScheduler = () => {
   winston.debug('Scheduling job')
   schedule.scheduleJob('0 * * * * *', () => {
     winston.debug('Starting update ...')
-    request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=BTC,ETH', (error, response, btcPrice) => {
-      winston.debug('BTC price: ' + btcPrice)
-      btcPrice = JSON.parse(btcPrice)
-      request('https://bitpay.com/api/rates', (error, response, btcConversions) => {
-        btcConversions = JSON.parse(btcConversions)
-        btcConversions.forEach(function(pair) {
-          pair.rate = pair.rate * btcPrice.BTC
-        })
-        btcConversions.push({
-          code:"ETH",
-          name:"Ethereum",
-          rate: btcPrice.ETH
-        })
-        let rates = btcConversions.reduce(function(map, obj) {
-          map[obj.code] = {
-            name: obj.name,
-            rate: obj.rate
-          }
-          return map
-        }, {})
-        publishRates(JSON.stringify(rates), () => {
-          winston.info("Published Rates")
+    if (connected) {
+      request('https://min-api.cryptocompare.com/data/price?fsym=XRB&tsyms=BTC,ETH', (error, response, btcPrice) => {
+        winston.debug('BTC price: ' + btcPrice)
+        btcPrice = JSON.parse(btcPrice)
+        request('https://bitpay.com/api/rates', (error, response, btcConversions) => {
+          btcConversions = JSON.parse(btcConversions)
+          btcConversions.forEach(function(pair) {
+            pair.rate = pair.rate * btcPrice.BTC
+          })
+          btcConversions.push({
+            code:"ETH",
+            name:"Ethereum",
+            rate: btcPrice.ETH
+          })
+          let rates = btcConversions.reduce(function(map, obj) {
+            map[obj.code] = {
+              name: obj.name,
+              rate: obj.rate
+            }
+            return map
+          }, {})
+          publishRates(JSON.stringify(rates), () => {
+            winston.info("Published Rates")
+          })
         })
       })
-    })
+    }
   })
 }
-
 
 let main = () => {
   winston.info('Started RateService')
   configure()
   configureSignals()
   connectMQTT()
+  startScheduler()
 }
 
 main()
